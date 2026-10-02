@@ -1,0 +1,7 @@
+{
+  "name": "hindi-subbed-anime-cf",
+  "version": "1.0.0",
+  "dependencies": {
+    "@libsql/client": "^0.6.0"
+  }
+}
