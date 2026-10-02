@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VIP Unlock - Hindi Subbed Anime</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div class="wrap">
+<header><a href="index.html" class="logo">Hindi <span>Subbed Anime</span></a></header>
+
+<div class="box">
+<h3>VIP Unlock</h3>
+<p class="mu">VIP Gmail + Passcode daalo, direct download bina shortener ke milega.</p>
+<p><input id="e" placeholder="Gmail" style="width:100%;background:#1a1d26;border:1px solid #2e2e32;color:#fff;border-radius:10px;padding:11px"></p>
+<p><input id="k" type="password" placeholder="Passcode" style="width:100%;background:#1a1d26;border:1px solid #2e2e32;color:#fff;border-radius:10px;padding:11px"></p>
+<button class="pill" style="background:#ff8c00;color:#111;width:100%;padding:12px;margin-top:8px;font-weight:800" onclick="go()">Unlock</button>
+<p id="r" class="mu" style="margin-top:10px"></p>
+</div>
+
+<div id="ban"></div>
+</div>
+
+<script src="assets/js/app.js"></script>
+<script>
+const kkLocal=s=>String(s||'').trim().toLowerCase();
+async function go(){
+  const r=await fetch('/api/data?'+Date.now(),{cache:'no-store'});
+  const d=await r.json();
+  const email=kkLocal(document.getElementById('e').value);
+  const pass=document.getElementById('k').value.trim();
+  if(!email||!pass){ document.getElementById('r').textContent='Email + Passcode daalo'; return; }
+  const u=(d.vip||[]).find(x=>kkLocal(x.email)===email);
+  if(!u){ document.getElementById('r').textContent='Gmail ya passcode galat'; return; }
+  const h=await H(pass);
+  if(u.h!==h){ document.getElementById('r').textContent='Passcode galat'; return; }
+  if(u.exp<Date.now()){ document.getElementById('r').textContent='Ye pass expire ho gaya'; return; }
+  try{
+    const vk=await dec(u.k, pass);
+    if(!vk) throw new Error();
+    localStorage.setItem('vk', vk);
+    localStorage.setItem('vexp', u.exp.toString());
+    document.getElementById('r').textContent='VIP active! Ab post par Direct button dikhega. 2 sec me home...';
+    setTimeout(()=>location.href='index.html',1500);
+  }catch(e){ document.getElementById('r').textContent='Decrypt fail'; }
+}
+</script>
+</body>
+</html>

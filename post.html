@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Post - Hindi Subbed Anime</title>
+<meta name="description" content="Watch Hindi Subbed Anime Episode">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<header>
+  <a href="index.html" class="logo">Hindi Subbed</a>
+</header>
+
+<div class="wrap">
+  <div id="meta"></div>
+  <div id="player"></div>
+  <div id="quals"></div>
+  <div id="ban"></div>
+</div>
+
+<!-- APP BAR -->
+<div class="app-bar">
+  <a href="index.html" class="nav-item"><i class="fa-solid fa-house"></i>Home</a>
+  <a href="vip.html" class="nav-item"><i class="fa-solid fa-gem"></i>VIP Pass</a>
+  <a id="tgBtn" href="#" target="_blank" class="nav-item" style="display:none;"><i class="fa-brands fa-telegram"></i>Telegram</a>
+</div>
+
+<script src="assets/js/app.js"></script>
+<script>
+let POST=null;
+let EPS=[];
+const qs=new URLSearchParams(location.search);
+const id=qs.get('id');
+
+async function init(){
+  const data=await load();
+  if(CFG.tg) {
+       const tg = $('tgBtn');
+       if(tg) { tg.href = CFG.tg; tg.style.display = 'flex'; }
+  }
+
+  const p=(data.posts||[]).find(x=>x.id===id);
+  if(!p){ $('meta').innerHTML='<p class="mu">Post nahi mila. index.html se aao.</p>'; return; }
+  POST=p;
+  document.title=p.name+' - Hindi Subbed Anime';
+
+  $('meta').innerHTML=`
+    <div class="box" style="padding:0;overflow:hidden; margin-top:15px;">
+      <img src="${esc(cdnImg(p.img))}" style="width:100%;aspect-ratio:16/9;object-fit:cover" alt="${esc(p.name)}">
+      <div style="padding:15px">
+        <h2 style="margin:0 0 6px; color:var(--ac); font-size:18px;">${esc(p.name)}</h2>
+        <p><a class="chip on" style="border:none;" href="index.html?c=${encodeURIComponent(kk(p.cat))}">${esc(p.cat)}</a> ${gens(p).map(g=>`<a class="chip" href="index.html?g=${encodeURIComponent(kk(g))}">${esc(g)}</a>`).join(' ')}</p>
+        <p class="mu" style="margin-top:10px;"><i class="fa-solid fa-calendar"></i> ${esc(p.yr||'Unknown')}</p>
+        <p style="margin-top:8px">${esc(p.story||'')}</p>
+        ${CFG.tg ? `<a href="${esc(CFG.tg)}" target="_blank" class="pill" style="margin-top:12px; width:100%; justify-content:center;"><i class="fa-brands fa-telegram"></i> Join Telegram</a>` : ''}
+      </div>
+    </div>
+  `;
+
+  const byQ={FHD:[],HD:[],SD:[]};
+  (p.eps||[]).forEach(e=>{
+    if(!byQ[e.q]) byQ[e.q]=[];
+    byQ[e.q].push(e);
+  });
+  EPS=p.eps||[];
+
+  $('quals').innerHTML=['FHD','HD','SD'].map(q=>{
+    const list=(byQ[q]||[]).sort((a,b)=>String(a.s).localeCompare(b.s,0,{numeric:true})||String(a.n).localeCompare(b.n,0,{numeric:true}));
+    return `<div class="box"><h3 style="margin:0 0 8px; color:var(--ac);"><i class="fa-solid fa-layer-group"></i> ${q}</h3>`+
+    (list.map(e=>{
+      const idx=EPS.indexOf(e);
+      return `<div class="ep">
+        <span>S${esc(e.s)} E${esc(e.n)}</span>
+        <button class="primary" onclick="goVerify(${idx})"><i class="fa-solid fa-download"></i> DL</button>
+        ${e.play?`<button onclick="playEp(${idx})"><i class="fa-solid fa-play"></i></button>`:''}
+        ${e.pd?`<button onclick="vipDirect(${idx})"><i class="fa-solid fa-gem"></i></button>`:''}
+      </div>`;
+    }).join('') || '<small class="mu">Is quality me episode nahi</small>')+'</div>';
+  }).join('');
+}
+
+function goVerify(i){
+  const e=EPS[i];
+  setPending(e.id);
+  localStorage.setItem('pending_post', POST.id);
+  location.href=`verify.html?id=${encodeURIComponent(POST.id)}&ep=${encodeURIComponent(e.id)}`;
+}
+
+async function vipDirect(i){
+  const vk=localStorage.getItem('vk');
+  const vexp=parseInt(localStorage.getItem('vexp')||'0');
+  if(!vk || vexp<Date.now()){ location.href='vip.html'; return; }
+  const real=await dec(EPS[i].pd, vk);
+  if(real && isUrl(real)) window.open(real,'_blank');
+  else alert('VIP decrypt fail, dobara login karo');
+}
+
+function playEp(i){
+  const e=EPS[i];
+  if(!e.play) return;
+  if(e.lock){
+    const pwd=prompt('Play Password:'); if(!pwd) return;
+    dec(e.play, pwd).then(l=>{ if(l) showPlayer(l); else alert('Password galat'); });
+  }else showPlayer(e.play);
+}
+
+function showPlayer(link){
+  if(!isUrl(link)) return;
+  const isVid=/\.(mp4|webm|m3u8)(\?|$)/i.test(link);
+  const el=document.createElement(isVid?'video':'iframe');
+  el.src=link;
+  if(isVid) el.controls=true; else el.allowFullscreen=true;
+  el.style.width='100%'; el.style.aspectRatio='16/9'; el.style.border='1px solid var(--ln)'; el.style.borderRadius='14px'; el.style.background='#000'; el.style.marginBottom='15px';
+  const p=$('player'); p.innerHTML=''; p.appendChild(el);
+  el.scrollIntoView({block:'center', behavior: 'smooth'});
+}
+
+init();
+</script>
+</body>
+</html>

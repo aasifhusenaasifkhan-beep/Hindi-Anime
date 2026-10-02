@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Hindi Subbed Anime - Watch Online Lifetime Free</title>
+<meta name="description" content="Hindi Subbed Anime - Watch Hindi Subbed, Hindi Dubbed Anime, Romance, Reincarnation, Action Anime Online Lifetime Free">
+<meta name="theme-color" content="#00ff66">
+<link rel="stylesheet" href="assets/css/style.css">
+<!-- FontAwesome For Cloudflare Theme Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+.site-menu { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: none; flex-direction: column; justify-content: flex-end; backdrop-filter: blur(4px); }
+.site-menu.show { display: flex; animation: slideUp 0.3s ease-out; }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.menu-content { background: var(--bg); border-radius: 20px 20px 0 0; padding: 20px; max-height: 85vh; overflow-y: auto; border-top: 1px solid var(--ln); }
+.menu-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+.menu-header h3 { margin: 0; color: var(--ac); font-size: 18px; }
+.menu-header button { background: none; border: none; color: var(--tx); font-size: 20px; cursor: pointer; }
+.menu-section { margin-bottom: 20px; }
+.menu-section h4 { margin: 0 0 10px 0; color: var(--mu); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.wrap-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- MAIN MENU OVERLAY -->
+<div id="siteMenu" class="site-menu">
+  <div class="menu-content">
+    <div class="menu-header">
+      <h3>Explore Anime</h3>
+      <button onclick="toggleMenu()">✕</button>
+    </div>
+    <div class="menu-section">
+      <h4>📁 Categories</h4>
+      <div class="wrap-chips" id="menuCats"></div>
+    </div>
+    <div class="menu-section">
+      <h4>🎭 Genres</h4>
+      <div class="wrap-chips" id="menuGens"></div>
+    </div>
+    <div class="menu-section">
+      <h4>🔤 A-Z List</h4>
+      <div class="wrap-chips" id="menuAZ"></div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">Hindi Subbed</div>
+  <div class="search">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input id="q" placeholder="Search anime...">
+  </div>
+  <!-- 3 DOTS MENU -->
+  <button onclick="toggleMenu()" style="background:transparent;border:0;color:var(--tx);font-size:22px;cursor:pointer;padding:0 5px;margin-left:5px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+</header>
+
+<div class="wrap">
+  <div class="filters">
+    <div class="row" id="cats"></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="pg"><button id="pv">Previous</button><span id="pi"></span><button id="nx">Next</button></div>
+  <div id="ban"></div>
+</div>
+
+<!-- NEW APP BAR -->
+<div class="app-bar">
+  <a href="index.html" class="nav-item active"><i class="fa-solid fa-house"></i>Home</a>
+  <a href="vip.html" class="nav-item"><i class="fa-solid fa-gem"></i>VIP Pass</a>
+  <a href="#" onclick="toggleMenu(); return false;" class="nav-item"><i class="fa-solid fa-masks-theater"></i>Genres</a>
+  <a id="tgBtn" href="#" target="_blank" class="nav-item" style="display:none;"><i class="fa-brands fa-telegram"></i>Telegram</a>
+</div>
+
+<script src="assets/js/app.js"></script>
+<script>
+const N=8;
+let S={q:'',c:'',g:'',a:'',p:0}, ALL=[];
+
+function toggleMenu() {
+  const m = $('siteMenu');
+  if(m.classList.contains('show')) m.classList.remove('show');
+  else m.classList.add('show');
+}
+
+function row(id,k,map){
+  const r=$(id); r.innerHTML='';
+  [...map].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([val,label])=>{
+    const b=document.createElement('button');
+    b.className='chip'+(S[k]===val?' on':''); b.textContent=label;
+    b.onclick=()=>{ S[k]=S[k]===val?'':val; S.p=0; draw(); };
+    r.appendChild(b);
+  });
+}
+
+function menuRow(id,k,map){
+  const r=$(id); r.innerHTML='';
+  [...map].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([val,label])=>{
+    const b=document.createElement('button');
+    b.className='chip'+(S[k]===val?' on':''); b.textContent=label;
+    b.onclick=()=>{ S[k]=S[k]===val?'':val; S.p=0; toggleMenu(); draw(); };
+    r.appendChild(b);
+  });
+}
+
+function draw(){
+  const cm=new Map(), gm=new Map(), am=new Map();
+  ALL.forEach(p=>{
+    if(p.cat) cm.set(kk(p.cat), cm.get(kk(p.cat))||p.cat.trim());
+    gens(p).forEach(g=>gm.set(kk(g), gm.get(kk(g))||g));
+    const a=(p.name[0]||'#').toUpperCase(); am.set(a,a);
+  });
+  
+  row('cats','c',cm); 
+  menuRow('menuCats','c',cm);
+  menuRow('menuGens','g',gm);
+  menuRow('menuAZ','a',am);
+
+  let f=ALL.filter(p=>{
+    const key=(p.keywords||'')+' '+p.name+' '+p.cat+' '+(p.gen||[]).join(' ');
+    return kk(key).includes(S.q) && (!S.c||kk(p.cat)===S.c) && (!S.g||gens(p).some(g=>kk(g)===S.g)) && (!S.a||p.name[0].toUpperCase()===S.a);
+  }).sort((a,b)=>(b.updated||0)-(a.updated||0));
+
+  const total=Math.max(1,Math.ceil(f.length/N));
+  S.p=Math.min(S.p,total-1); if(S.p<0) S.p=0;
+  const slice=f.slice(S.p*N, S.p*N+N);
+
+  $('grid').innerHTML=slice.map(p=>{
+    const genre=(p.gen&&p.gen[0])?p.gen[0].replace(/#/g,''): (p.cat||'Anime');
+    return `<a class="card" href="post.html?id=${encodeURIComponent(p.id)}">
+      <div class="thumb">
+        <img loading="lazy" src="${esc(cdnImg(p.img))}" alt="${esc(p.name)}">
+        <div class="top-badge"><span>WATCH NOW</span><span>${esc((p.cat||'Anime').slice(0,20))}</span></div>
+        <span class="gen-badge">${esc(genre)}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${esc(p.name)}</div>
+        <div class="watch-btn"><i class="fa-solid fa-play"></i> Watch Episode</div>
+      </div>
+    </a>`;
+  }).join('') || '<p class="mu" style="padding:20px; text-align:center;">No Anime Found.</p>';
+  
+  $('pi').textContent=`Page ${S.p+1} of ${total}`;
+  $('pv').disabled=S.p<=0; $('nx').disabled=S.p>=total-1;
+  $('pv').onclick=()=>{S.p--; draw(); scrollTo(0,0)}; $('nx').onclick=()=>{S.p++; draw(); scrollTo(0,0)};
+}
+
+async function loadData(){
+  try{
+    const d = await load();
+    ALL = d.posts || [];
+    if(CFG.tg) {
+       const tg = $('tgBtn');
+       if(tg) { tg.href = CFG.tg; tg.style.display = 'flex'; }
+    }
+    draw();
+  }catch(e){ $('grid').innerHTML='<p class="mu">Data loading failed...</p>'; }
+}
+
+const inp=$('q');
+const u=new URLSearchParams(location.search);
+if(u.get('q')){ S.q=kk(u.get('q')); inp.value=u.get('q'); }
+if(u.get('c')) S.c=kk(u.get('c'));
+if(u.get('g')) S.g=kk(u.get('g'));
+if(u.get('a')) S.a=u.get('a').toUpperCase();
+
+inp.oninput=()=>{ S.q=kk(inp.value); S.p=0; draw(); };
+loadData();
+</script>
+</body>
+</html>
