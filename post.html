@@ -44,7 +44,7 @@ async function init(){
   const p=(data.posts||[]).find(x=>x.id===id);
   if(!p){ $('meta').innerHTML='<p class="mu">Post nahi mila. index.html se aao.</p>'; return; }
   POST=p;
-  document.title=p.name+' - Hindi Subbed Anime';
+  document.title=p.name+' - Hindi Subbed Anime | Hindi Dubbed Anime Watch Online Free'; const md=document.querySelector('meta[name="description"]'); if(md) md.content=(p.name+' - Hindi Sub Anime / Hindi Dub Anime / Asi Anime free me dekho. '+(p.story||'')).slice(0,300);
 
   $('meta').innerHTML=`
     <div class="box" style="padding:0;overflow:hidden; margin-top:15px;">
