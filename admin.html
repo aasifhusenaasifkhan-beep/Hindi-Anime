@@ -215,7 +215,7 @@ async function pushToDB(){
       headers: { 'Authorization': adminPassCode, 'Content-Type': 'application/json' },
       body: JSON.stringify(pub)
     });
-    if(!r.ok) throw new Error("Unauthorized or DB Error");
+    if(!r.ok) throw new Error(r.status+': '+(await r.text()).slice(0,200));
     log(`âœ… Saved to Turso Database Successfully!`);
   }catch(e){ log('Push fail: '+e.message,false); }
   
