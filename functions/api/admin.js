@@ -7,6 +7,7 @@ export async function onRequestPost(context) {
   try {
     const db = getDB(context.env);
     const payload = await context.request.json();
+    if (payload.check) return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
     const posts = payload.posts || [], vip = payload.vip || [];
     const q = [];
 
