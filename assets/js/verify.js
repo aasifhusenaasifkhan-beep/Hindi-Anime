@@ -106,7 +106,7 @@ async function showRealLink() {
     try {
       const vk = await getGlobalVk();
       const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-      const real = await dec(EP.pd, vk);
+      const real = await decV(EP.pd, vk);
       
       if(real && /^https?:\/\//i.test(real)){
         after.innerHTML = `
@@ -128,8 +128,7 @@ async function getGlobalVk(){
   const s='Hindi Subbed Anime_VK_BULLETPROOF_2024';
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function dec(b,p){
-  if(window.dec) return window.dec(b,p);
+function decV(b,p){
   return (async()=>{
     try{
       const a=Uint8Array.from(atob(b),c=>c.charCodeAt(0)), e=new TextEncoder();
