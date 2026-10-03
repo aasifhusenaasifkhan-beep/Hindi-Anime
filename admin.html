@@ -35,7 +35,7 @@ textarea.form-control { min-height: 70px; }
 <div id="loginSection" style="background:var(--card); border:1px solid var(--ln); border-radius:12px; padding:25px 20px; text-align:center;">
   <p style="color:var(--mu); font-size:12px; margin-bottom:20px;">Secure Database Login</p>
   <input id="adminPass" type="password" class="form-control" placeholder="Enter Admin Password..." style="text-align:center; font-weight:bold; letter-spacing:1px; margin-bottom:15px;">
-  <button class="btn-action" id="btnLoad" onclick="loadFromDB()">🔓 Unlock Panel</button>
+  <button class="btn-action" id="btnLoad" onclick="loadFromDB()">ðŸ”“ Unlock Panel</button>
 </div>
 
 <div id="appBody">
@@ -47,7 +47,7 @@ textarea.form-control { min-height: 70px; }
     <button data-t="vip" class="ep-btn" onclick="tab('vip')">VIP</button>
     <button data-t="ads" class="ep-btn" onclick="tab('ads')">Ads & App</button>
     <button data-t="set" class="ep-btn" onclick="tab('set')">Settings</button>
-    <button data-t="push" class="ep-btn" onclick="tab('push')" style="background:#00b359; color:#fff;">🚀 Push Live</button>
+    <button data-t="push" class="ep-btn" onclick="tab('push')" style="background:#00b359; color:#fff;">ðŸš€ Push Live</button>
   </div>
 
   <div class="p on" id="t-post">
@@ -57,7 +57,7 @@ textarea.form-control { min-height: 70px; }
       <textarea id="autoDetectInp" class="form-control" style="height:60px; font-size:11px;" placeholder="Paste text here..." oninput="handleAutoDetect()"></textarea>
     </div>
     <label>Poster Image URL</label>
-    <p style="font-size:10px; color:var(--ac); margin:0 0 5px;">✅ Telegram Link ab directly Support karega (t.me/...)</p>
+    <p style="font-size:10px; color:var(--ac); margin:0 0 5px;">âœ… Telegram Link ab directly Support karega (t.me/...)</p>
     <input id="pImg" class="form-control" placeholder="https://..." oninput="document.getElementById('pImgPrev').src=cdnImg(this.value)">
     <img id="pImgPrev" src="https://placehold.co/600x338/0d121c/00ff66?text=Preview" style="width:100%; margin-top:8px; border-radius:8px; border:1px solid var(--ln); aspect-ratio:16/9; object-fit:cover;">
     <label>Anime Name *</label><input id="pName" class="form-control" placeholder="Solo Leveling Hindi Sub">
@@ -117,7 +117,7 @@ textarea.form-control { min-height: 70px; }
 
   <div class="p" id="t-push">
     <h2><i class="fa-solid fa-cloud-arrow-up"></i> Save to Database (Live)</h2>
-    <button class="btn-action" id="btnPush" onclick="pushToDB()">🚀 Push to Cloudflare Database</button>
+    <button class="btn-action" id="btnPush" onclick="pushToDB()">ðŸš€ Push to Cloudflare Database</button>
   </div>
 </div>
 
@@ -195,7 +195,7 @@ async function loadFromDB(){
     renderAll();
   }catch(e){ log('Login Fail: '+e.message,false); }
   
-  $('btnLoad').textContent='🔓 Unlock Panel';
+  $('btnLoad').textContent='ðŸ”“ Unlock Panel';
   $('btnLoad').disabled=false;
 }
 
@@ -216,10 +216,10 @@ async function pushToDB(){
       body: JSON.stringify(pub)
     });
     if(!r.ok) throw new Error("Unauthorized or DB Error");
-    log(`✅ Saved to Turso Database Successfully!`);
+    log(`âœ… Saved to Turso Database Successfully!`);
   }catch(e){ log('Push fail: '+e.message,false); }
   
-  $('btnPush').disabled=false; $('btnPush').textContent='🚀 Push to Cloudflare Database';
+  $('btnPush').disabled=false; $('btnPush').textContent='ðŸš€ Push to Cloudflare Database';
 }
 
 function renderAll(){
@@ -250,13 +250,13 @@ async function addEpisode(){
 
   let baseUrl = db.cfg.web? db.cfg.web.trim().replace(/\/$/, '') : window.location.origin;
   const targetUrl = `${baseUrl}/verify.html?id=${post.id}&ep=${epId}&done=1`;
-  const shorts=[];
+  const shorts=[]; let lastErr='';
   
   for(const s of db.sh){
     try{
       const targetApiUrl = `https://${s.d}/api?api=${encodeURIComponent(s.k)}&url=${encodeURIComponent(targetUrl)}`;
       // CF Proxy bypasses CORS
-      const r = await fetch(`/api/proxy?url=${encodeURIComponent(targetApiUrl)}`);
+      const r = await fetch(`/api/proxy?url=${encodeURIComponent(targetApiUrl)}`, { headers: { 'Authorization': adminPassCode } });
       const text = await r.text();
       let l = null;
 
@@ -271,11 +271,11 @@ async function addEpisode(){
           const m = text.match(/https?:\/\/[^\s"'\\]+/);
           if(m) l = m[0];
       }
-      if(l) shorts.push(l);
+      if(l) shorts.push(l); else lastErr = s.d+': '+text.slice(0,200);
     }catch(e){ console.log("Shortener Error:", e); }
   }
 
-  if(!shorts.length) { $('btnEp').textContent = '+ Add Episode'; return log('Shortener fail ho gaya (CORS/API error)',false); }
+  if(!shorts.length) { $('btnEp').textContent = '+ Add Episode'; return log('Shortener fail ho gaya -> '+lastErr,false); }
 
   const vk=await getVk();
   const pd=await enc(real, vk);
