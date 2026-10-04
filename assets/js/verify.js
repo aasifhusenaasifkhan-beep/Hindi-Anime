@@ -1,59 +1,45 @@
-let EP=null, POST=null, SHORTS=[];
+// Verify page: Hold -> /api/go (har click par NAYA shortener) -> wapas token ke saath -> /api/unlock
+let EP=null, POST=null;
+const vg=id=>document.getElementById(id);
+const vesc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 async function init(){
-  const params = new URLSearchParams(location.search);
-  const postId = params.get('id');
-  const epId = params.get('ep');
-  const isDone = params.get('done') === '1'; 
-  const $ = id=>document.getElementById(id);
+  const params=new URLSearchParams(location.search);
+  const postId=params.get('id'), epId=params.get('ep'), token=params.get('t');
 
-  if(!postId||!epId){
-    $('msg').innerHTML='Invalid link. <a href="index.html">Go Home</a>';
-    return;
-  }
+  if(!postId||!epId){ vg('msg').innerHTML='Invalid link. <a href="index.html">Go Home</a>'; return; }
 
-  // Security: Changed from SessionStorage to LocalStorage 
-  if(!isDone) {
-      const pending=localStorage.getItem('pending_ep');
-      const ptime=parseInt(localStorage.getItem('pending_time')||'0');
-      const ref=document.referrer||'';
-      const allowedRef = ref.includes(location.hostname) || (pending===epId && (Date.now()-ptime)<15*60*1000);
-
-      if(!allowedRef){
-        $('msg').innerHTML='тЪая╕П Direct link blocked. <br>Please open from our website.<br><a class="pill" href="index.html">Go Home</a>';
-        return;
-      }
+  if(!token){
+    const pending=localStorage.getItem('pending_ep');
+    const ptime=parseInt(localStorage.getItem('pending_time')||'0');
+    const ref=document.referrer||'';
+    const allowedRef=ref.includes(location.hostname) || (pending===epId && (Date.now()-ptime)<15*60*1000);
+    if(!allowedRef){
+      vg('msg').innerHTML='⚠️ Direct link blocked. <br>Please open from our website.<br><a class="pill" href="index.html">Go Home</a>';
+      return;
+    }
   }
 
   let data;
   try{
     const r=await fetch('/api/data?'+Date.now(),{cache:'no-store'});
     data=await r.json();
-  }catch(e){
-    $('msg').textContent='Failed to load DB.'; return;
-  }
+  }catch(e){ vg('msg').textContent='Failed to load DB.'; return; }
 
   const post=(data.posts||[]).find(p=>p.id===postId);
   const ep=post ? (post.eps||[]).find(e=>e.id===epId) : null;
-  
-  if(!ep){ $('msg').textContent='Episode not found'; return; }
-  POST=post; EP=ep; SHORTS=ep.short||[];
+  if(!ep){ vg('msg').textContent='Episode not found'; return; }
+  POST=post; EP=ep;
 
-  if (isDone) {
-      // Return checking via LocalStorage
-      if(localStorage.getItem('human_verified') !== '1') {
-          $('msg').innerHTML = '<span style="color:#ef4444">тЪая╕П Verification Bypass Detected!</span><br>Please do not skip ads.<br><a href="index.html">Go Home</a>';
-          return;
-      }
-      $('title').textContent = `Download: ${post.name}`;
-      $('msg').innerHTML = '<span style="color:#22c55e">тЬЕ Shortener Solved!</span>';
-      showRealLink();
-  } else {
-      $('title').textContent=`Verify: ${post.name} S${ep.s} E${ep.n}`;
-      $('msg').textContent='Bot check required to generate link.';
-      $('human').style.display='block';
-      setupHold();
+  if(token){
+    vg('title').textContent=`Download: ${post.name}`;
+    vg('msg').textContent='Link unlock ho raha hai...';
+    return unlock(token);
   }
+  vg('title').textContent=`Verify: ${post.name} S${ep.s} E${ep.n}`;
+  vg('msg').textContent='Bot check required to generate link.';
+  vg('human').style.display='block';
+  setupHold();
 }
 
 function setupHold(){
@@ -76,66 +62,62 @@ function setupHold(){
   btn.addEventListener('touchstart', start,{passive:false}); btn.addEventListener('touchend', end);
 }
 
+
 async function success(){
-  const $=id=>document.getElementById(id);
-  $('human').style.display='none';
-  const after=$('after');
+  vg('human').style.display='none';
+  const after=vg('after');
   after.style.display='block';
-
-  // SET to LocalStorage so shortener new tabs won't break it
-  localStorage.setItem('human_verified','1'); 
-
-  if(SHORTS.length){
-    const rot=parseInt(localStorage.getItem('rot')||'0');
-    localStorage.setItem('rot',(rot+1).toString());
-    const shortUrl=SHORTS[rot % SHORTS.length];
-
+  after.innerHTML='<p class="mu">Link generate ho raha hai...</p>';
+  try{
+    const r=await fetch(`/api/go?id=${encodeURIComponent(POST.id)}&ep=${encodeURIComponent(EP.id)}`,{cache:'no-store'});
+    const j=await r.json().catch(()=>({}));
+    if(!j.url){
+      after.innerHTML=`<p style="color:#ef4444">${vesc(j.error||'Link generate nahi hua')}</p><button class="pill" id="retryBtn" style="margin-top:10px">Retry</button>`;
+      vg('retryBtn').onclick=()=>location.reload();
+      return;
+    }
     after.innerHTML=`
       <h3 style="color:#ff8c00">Link Generated!</h3>
       <p class="mu">Ad solve karne ke baad yahi page aayega aur Original link milega.</p>
-      <button class="pill" style="background:#ff8c00;color:#111;width:100%;margin-top:15px;padding:14px;font-size:16px;font-weight:900" onclick="window.location.href='${shortUrl}'">Go to Download Link</button>
-    `;
-  }else{
-    after.innerHTML='<p class="mu">No short links configured by admin.</p>';
+      <button class="pill" id="goBtn" style="background:#ff8c00;color:#111;width:100%;margin-top:15px;padding:14px;font-size:16px;font-weight:900">Go to Download Link</button>`;
+    vg('goBtn').onclick=()=>{ window.location.href=j.url; };
+  }catch(e){
+    after.innerHTML='<p style="color:#ef4444">Network error, dobara try karo.</p><button class="pill" id="retryBtn" style="margin-top:10px">Retry</button>';
+    vg('retryBtn').onclick=()=>location.reload();
   }
 }
 
-async function showRealLink() {
-    const after = document.getElementById('after');
-    after.style.display = 'block';
-    try {
-      const vk = await getGlobalVk();
-      const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-      const real = await decV(EP.pd, vk);
-      
-      if(real && /^https?:\/\//i.test(real)){
-        after.innerHTML = `
-          <div style="margin-top:10px;padding:20px;border:1px dashed #22c55e;border-radius:12px;background:#1a1d26">
-            <h3 style="color:#22c55e;margin:0 0 10px">ЁЯОЙ File Unlocked!</h3>
-            <p class="mu" style="margin-bottom:15px">Aapka direct download link ready hai:</p>
-            <a href="${esc(real)}" target="_blank" class="pill" style="display:inline-block;background:#22c55e;color:#111;padding:12px 20px;font-size:15px;font-weight:900;width:100%;text-align:center;">Click Here To Download</a>
-          </div>
-        `;
-        localStorage.removeItem('human_verified');
-        localStorage.removeItem('pending_ep');
-      } else {
-        after.innerHTML = '<p style="color:#ef4444">Decryption failed. Please contact admin.</p>';
-      }
-    } catch(e) { console.log(e); }
-}
-
-async function getGlobalVk(){
-  const s='Hindi Subbed Anime_VK_BULLETPROOF_2024';
-  return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-function decV(b,p){
-  return (async()=>{
-    try{
-      const a=Uint8Array.from(atob(b),c=>c.charCodeAt(0)), e=new TextEncoder();
-      const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt:a.slice(0,16),iterations:100000,hash:'SHA-256'},await crypto.subtle.importKey('raw',e.encode(p),'PBKDF2',false,['deriveKey']),{name:'AES-GCM',length:256},false,['decrypt']);
-      return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:a.slice(16,28)},k,a.slice(28)));
-    }catch(e){ return null; }
-  })();
+async function unlock(token,tries){
+  tries=tries||0;
+  const after=vg('after');
+  after.style.display='block';
+  try{
+    const r=await fetch('/api/unlock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({t:token})});
+    const j=await r.json().catch(()=>({}));
+    if(r.status===425 && tries<3){
+      const w=Math.max(1,parseInt(j.wait)||1);
+      vg('msg').innerHTML='<span style="color:#ff8c00">⏳ Verify ho raha hai... '+w+' sec</span>';
+      await new Promise(res=>setTimeout(res,(w+1)*1000));
+      return unlock(token,tries+1);
+    }
+    if(j.url && /^https?:\/\//i.test(j.url)){
+      vg('msg').innerHTML='<span style="color:#22c55e">✅ Shortener Solved!</span>';
+      after.innerHTML=`
+        <div style="margin-top:10px;padding:20px;border:1px dashed #22c55e;border-radius:12px;background:#1a1d26">
+          <h3 style="color:#22c55e;margin:0 0 10px">🎉 File Unlocked!</h3>
+          <p class="mu" style="margin-bottom:15px">Aapka direct download link ready hai:</p>
+          <a href="${vesc(j.url)}" target="_blank" rel="noopener" class="pill" style="display:inline-block;background:#22c55e;color:#111;padding:12px 20px;font-size:15px;font-weight:900;width:100%;text-align:center;">Click Here To Download</a>
+        </div>`;
+      localStorage.removeItem('pending_ep');
+      return;
+    }
+    const why = j.error==='expired' ? 'Ye link expire ho gaya. Dobara generate karo.' : j.error==='shared' ? 'Ye link usi network par chalta hai jahan generate hua tha. Dobara generate karo.' : (j.error==='invalid' ? 'Invalid ya galat link.' : (j.error||'Unlock fail ho gaya.'));
+    vg('msg').innerHTML=`<span style="color:#ef4444">${vesc(why)}</span>`;
+    after.innerHTML='<button class="pill" id="retryBtn" style="margin-top:10px">Dobara Try Karo</button>';
+    vg('retryBtn').onclick=()=>{ if(typeof setPending==='function') setPending(EP.id); location.href=`verify.html?id=${encodeURIComponent(POST.id)}&ep=${encodeURIComponent(EP.id)}`; };
+  }catch(e){
+    vg('msg').innerHTML='<span style="color:#ef4444">Network error. Page reload karo.</span>';
+  }
 }
 
 init();
