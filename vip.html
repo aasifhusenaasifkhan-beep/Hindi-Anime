@@ -26,24 +26,19 @@
 <script>
 const kkLocal=s=>String(s||'').trim().toLowerCase();
 async function go(){
-  const r=await fetch('/api/data?'+Date.now(),{cache:'no-store'});
-  const d=await r.json();
+  const out=document.getElementById('r');
   const email=kkLocal(document.getElementById('e').value);
   const pass=document.getElementById('k').value.trim();
-  if(!email||!pass){ document.getElementById('r').textContent='Email + Passcode daalo'; return; }
-  const u=(d.vip||[]).find(x=>kkLocal(x.email)===email);
-  if(!u){ document.getElementById('r').textContent='Gmail ya passcode galat'; return; }
-  const h=await H(pass);
-  if(u.h!==h){ document.getElementById('r').textContent='Passcode galat'; return; }
-  if(u.exp<Date.now()){ document.getElementById('r').textContent='Ye pass expire ho gaya'; return; }
+  if(!email||!pass){ out.textContent='Email + Passcode daalo'; return; }
   try{
-    const vk=await dec(u.k, pass);
-    if(!vk) throw new Error();
-    localStorage.setItem('vk', vk);
-    localStorage.setItem('vexp', u.exp.toString());
-    document.getElementById('r').textContent='VIP active! Ab post par Direct button dikhega. 2 sec me home...';
+    const r=await fetch('/api/vip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,pass})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok){ out.textContent=j.error||'Gmail ya passcode galat'; return; }
+    localStorage.setItem('vemail',email); localStorage.setItem('vpass',pass); localStorage.setItem('vexp',String(j.exp));
+    localStorage.removeItem('vk');
+    out.textContent='VIP active! Ab post par Direct button dikhega. 2 sec me home...';
     setTimeout(()=>location.href='index.html',1500);
-  }catch(e){ document.getElementById('r').textContent='Decrypt fail'; }
+  }catch(e){ out.textContent='Network error'; }
 }
 </script>
 </body>
