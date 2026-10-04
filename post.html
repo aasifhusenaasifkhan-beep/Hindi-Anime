@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Post - Hindi Subbed Anime</title>
-<meta name="description" content="Watch Hindi Subbed Anime Episode">
+<meta name="description" content="Hindi Subbed Anime, Hindi Dubbed Anime aur Asi Anime free me dekho.">
+<meta name="theme-color" content="#00ff66">
 <link rel="stylesheet" href="assets/css/style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -16,7 +17,7 @@
 <div class="wrap">
   <div id="meta"></div>
   <div id="player"></div>
-  <div id="quals"></div>
+  <div id="eps"></div>
   <div id="ban"></div>
 </div>
 
@@ -29,76 +30,133 @@
 
 <script src="assets/js/app.js"></script>
 <script>
-let POST=null;
-let EPS=[];
-const qs=new URLSearchParams(location.search);
-const id=qs.get('id');
+let POST=null, EPS=[], CUR=null;
+const pid=new URLSearchParams(location.search).get('id');
+
+const QORDER=['FHD','HD','SD'];
+const GCOL=['#f472b6','#a78bfa','#60a5fa','#34d399','#fbbf24','#fb923c','#f87171','#22d3ee','#c084fc','#4ade80'];
+// Har genre ka apna fixed colour (naam se banta hai, har jagah same rehta hai)
+const gcol=g=>{ let h=0; for(const ch of kk(g)) h=(h*31+ch.charCodeAt(0))>>>0; return GCOL[h%GCOL.length]; };
+const pad=v=>{ const t=String(v==null?'':v).trim(); return /^\d$/.test(t)?'0'+t:t; };
+const isRange=n=>/^\s*\d+\s*[-–—]\s*\d+\s*$/.test(String(n==null?'':n));
+const epName=e=>isRange(e.n) ? 'Episodes '+String(e.n).replace(/\s+/g,'').replace(/[–—]/,'-') : 'Episode '+pad(e.n);
+const qkey=q=>QORDER.includes(String(q||'').toUpperCase()) ? String(q).toUpperCase() : 'X';
+const numCmp=(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true});
+
+function metaHtml(p){
+  const gs=gens(p);
+  const story=String(p.story||'').replace(/^\s*short\s*story\s*[:\-–]\s*/i,'').trim();
+  return `<div class="pm-card">
+    <div class="pm-poster"><img src="${esc(cdnImg(p.img))}" alt="${esc(p.name)}" onerror="this.onerror=null;this.src='https://placehold.co/600x338/0d121c/00ff66?text=No+Image'"></div>
+    <div class="pm-body">
+      <h1 class="pm-title">${esc(p.name)}</h1>
+      <div class="pm-tags">
+        ${p.cat?`<a class="pm-tag pm-cat" href="index.html?c=${encodeURIComponent(kk(p.cat))}">${esc(p.cat)}</a>`:''}
+        <span class="pm-tag pm-year"><i class="fa-solid fa-calendar"></i> ${esc(p.yr||'Unknown')}</span>
+      </div>
+      ${gs.length?`<div class="pm-label">Genres</div><div class="pm-tags">${gs.map(g=>{ const c=gcol(g); return `<a class="pm-tag" style="color:${c};background:${c}1f;border-color:${c}66" href="index.html?g=${encodeURIComponent(kk(g))}">${esc(g)}</a>`; }).join('')}</div>`:''}
+      ${story?`<div class="pm-label">Short Story</div><p class="pm-story">${esc(story)}</p>`:''}
+      ${CFG.tg?`<a href="${esc(CFG.tg)}" target="_blank" rel="noopener" class="pill pm-tg"><i class="fa-brands fa-telegram"></i> Join Telegram</a>`:''}
+    </div>
+  </div>`;
+}
+
+// '1' aur '01' ko ek hi season maana jaata hai
+const skey=v=>{ const t=String(v==null||v===''?'1':v).trim(); return /^\d+$/.test(t)?String(parseInt(t,10)):t; };
+function seasonsOf(){
+  const m=new Map();
+  EPS.forEach(e=>{ const k=skey(e.s); if(!m.has(k)) m.set(k,[]); m.get(k).push(e); });
+  return [...m.entries()].sort((a,b)=>numCmp(a[0],b[0]));
+}
+
+function rowHtml(e){
+  const q=String(e.q||'').toUpperCase();
+  return `<div class="pm-ep">
+    <div class="pm-ep-info">
+      <div class="pm-ep-name">${esc(epName(e))}</div>
+      <div class="pm-ep-meta">Season ${esc(pad(e.s||'1'))} &bull; Quality ${esc(q||'-')}</div>
+    </div>
+    <div class="pm-btns">
+      <button class="pm-btn pm-dl" data-act="dl" data-ep="${esc(e.id)}"><i class="fa-solid fa-download"></i> Download</button>
+      ${e.play?`<button class="pm-btn pm-play" data-act="play" data-ep="${esc(e.id)}" title="Play"><i class="fa-solid fa-play"></i> Play</button>`:''}
+      ${e.hl?`<button class="pm-btn pm-vip" data-act="vip" data-ep="${esc(e.id)}" title="VIP Direct"><i class="fa-solid fa-gem"></i> VIP</button>`:''}
+    </div>
+  </div>`;
+}
+
+function renderEps(){
+  const box=$('eps');
+  const seasons=seasonsOf();
+  if(!seasons.length){ box.innerHTML='<div class="pm-empty">Abhi koi episode add nahi hua.</div>'; return; }
+  if(!seasons.some(s=>s[0]===CUR)) CUR=seasons[0][0];
+  const list=seasons.find(s=>s[0]===CUR)[1];
+
+  const tabs=seasons.length>1
+    ? `<div class="pm-seasons">${seasons.map(([s,l])=>`<button class="pm-stab${s===CUR?' on':''}" data-s="${esc(s)}">Season ${esc(pad(s))}<small>${l.length} ${l.length>1?'entries':'entry'}</small></button>`).join('')}</div>`
+    : '';
+
+  const byQ=new Map();
+  list.forEach(e=>{ const k=qkey(e.q); if(!byQ.has(k)) byQ.set(k,[]); byQ.get(k).push(e); });
+  const body=[...QORDER,'X'].filter(k=>byQ.has(k)).map(k=>{
+    const arr=byQ.get(k).sort((a,b)=>numCmp(a.n,b.n));
+    const label=k==='X' ? String(arr[0].q||'Other').toUpperCase() : k;
+    return `<div class="pm-qbox">
+      <div class="pm-qhead"><span class="pm-qbadge pm-q-${k}">${esc(label)}</span><span class="pm-qsub">Quality &bull; ${arr.length} ${arr.length>1?'entries':'entry'}</span></div>
+      ${arr.map(rowHtml).join('')}
+    </div>`;
+  }).join('');
+
+  box.innerHTML=`<div class="pm-head"><h3><i class="fa-solid fa-layer-group"></i> Download</h3><span class="pm-count">${EPS.length} total</span></div>
+    ${tabs}
+    <div class="pm-season-title">Season ${esc(pad(CUR))}</div>
+    ${body}`;
+}
+
+document.addEventListener('click',ev=>{
+  const t=ev.target.closest('[data-s],[data-act]'); if(!t) return;
+  if(t.dataset.s!==undefined){ CUR=t.dataset.s; renderEps(); return; }
+  const e=EPS.find(x=>x.id===t.dataset.ep); if(!e) return;
+  if(t.dataset.act==='dl') goVerify(e);
+  else if(t.dataset.act==='play') playEp(e);
+  else if(t.dataset.act==='vip') vipDirect(e);
+});
 
 async function init(){
   const data=await load();
-  if(CFG.tg) {
-       const tg = $('tgBtn');
-       if(tg) { tg.href = CFG.tg; tg.style.display = 'flex'; }
-  }
+  if(CFG.tg){ const tg=$('tgBtn'); if(tg){ tg.href=CFG.tg; tg.style.display='flex'; } }
 
-  const p=(data.posts||[]).find(x=>x.id===id);
-  if(!p){ $('meta').innerHTML='<p class="mu">Post nahi mila. index.html se aao.</p>'; return; }
-  POST=p;
-  document.title=p.name+' - Hindi Subbed Anime | Hindi Dubbed Anime Watch Online Free'; const md=document.querySelector('meta[name="description"]'); if(md) md.content=(p.name+' - Hindi Sub Anime / Hindi Dub Anime / Asi Anime free me dekho. '+(p.story||'')).slice(0,300);
+  const p=(data.posts||[]).find(x=>x.id===pid);
+  if(!p){ $('meta').innerHTML='<p class="mu" style="padding:20px;text-align:center">Post nahi mila. <a href="index.html" style="color:var(--ac)">Home</a> se aao.</p>'; return; }
+  POST=p; EPS=p.eps||[];
 
-  $('meta').innerHTML=`
-    <div class="box" style="padding:0;overflow:hidden; margin-top:15px;">
-      <img src="${esc(cdnImg(p.img))}" style="width:100%;aspect-ratio:16/9;object-fit:cover" alt="${esc(p.name)}">
-      <div style="padding:15px">
-        <h2 style="margin:0 0 6px; color:var(--ac); font-size:18px;">${esc(p.name)}</h2>
-        <p><a class="chip on" style="border:none;" href="index.html?c=${encodeURIComponent(kk(p.cat))}">${esc(p.cat)}</a> ${gens(p).map(g=>`<a class="chip" href="index.html?g=${encodeURIComponent(kk(g))}">${esc(g)}</a>`).join(' ')}</p>
-        <p class="mu" style="margin-top:10px;"><i class="fa-solid fa-calendar"></i> ${esc(p.yr||'Unknown')}</p>
-        <p style="margin-top:8px">${esc(p.story||'')}</p>
-        ${CFG.tg ? `<a href="${esc(CFG.tg)}" target="_blank" class="pill" style="margin-top:12px; width:100%; justify-content:center;"><i class="fa-brands fa-telegram"></i> Join Telegram</a>` : ''}
-      </div>
-    </div>
-  `;
+  document.title=p.name+' - Hindi Subbed Anime | Hindi Dubbed Anime Watch Online Free';
+  const md=document.querySelector('meta[name="description"]');
+  if(md) md.content=(p.name+' - Hindi Sub Anime / Hindi Dub Anime / Asi Anime free me dekho. '+(p.story||'')).slice(0,300);
 
-  const byQ={FHD:[],HD:[],SD:[]};
-  (p.eps||[]).forEach(e=>{
-    if(!byQ[e.q]) byQ[e.q]=[];
-    byQ[e.q].push(e);
-  });
-  EPS=p.eps||[];
-
-  $('quals').innerHTML=['FHD','HD','SD'].map(q=>{
-    const list=(byQ[q]||[]).sort((a,b)=>String(a.s).localeCompare(b.s,0,{numeric:true})||String(a.n).localeCompare(b.n,0,{numeric:true}));
-    return `<div class="box"><h3 style="margin:0 0 8px; color:var(--ac);"><i class="fa-solid fa-layer-group"></i> ${q}</h3>`+
-    (list.map(e=>{
-      const idx=EPS.indexOf(e);
-      return `<div class="ep">
-        <span>S${esc(e.s)} E${esc(e.n)}</span>
-        <button class="primary" onclick="goVerify(${idx})"><i class="fa-solid fa-download"></i> DL</button>
-        ${e.play?`<button onclick="playEp(${idx})"><i class="fa-solid fa-play"></i></button>`:''}
-        ${e.pd?`<button onclick="vipDirect(${idx})"><i class="fa-solid fa-gem"></i></button>`:''}
-      </div>`;
-    }).join('') || '<small class="mu">Is quality me episode nahi</small>')+'</div>';
-  }).join('');
+  $('meta').innerHTML=metaHtml(p);
+  renderEps();
 }
 
-function goVerify(i){
-  const e=EPS[i];
+function goVerify(e){
   setPending(e.id);
   localStorage.setItem('pending_post', POST.id);
   location.href=`verify.html?id=${encodeURIComponent(POST.id)}&ep=${encodeURIComponent(e.id)}`;
 }
 
-async function vipDirect(i){
-  const vk=localStorage.getItem('vk');
+async function vipDirect(e){
+  const em=localStorage.getItem('vemail'), pw=localStorage.getItem('vpass');
   const vexp=parseInt(localStorage.getItem('vexp')||'0');
-  if(!vk || vexp<Date.now()){ location.href='vip.html'; return; }
-  const real=await dec(EPS[i].pd, vk);
-  if(real && isUrl(real)) window.open(real,'_blank');
-  else alert('VIP decrypt fail, dobara login karo');
+  if(!em || !pw || vexp<Date.now()){ location.href='vip.html'; return; }
+  try{
+    const r=await fetch('/api/vip',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,pass:pw,ep:e.id})});
+    const j=await r.json().catch(()=>({}));
+    if(j.url && isUrl(j.url)) window.open(j.url,'_blank');
+    else if(r.status===401||r.status===403){ location.href='vip.html'; }
+    else alert(j.error||'VIP link nahi mila');
+  }catch(err){ alert('Network error'); }
 }
 
-function playEp(i){
-  const e=EPS[i];
+function playEp(e){
   if(!e.play) return;
   if(e.lock){
     const pwd=prompt('Play Password:'); if(!pwd) return;
@@ -112,9 +170,9 @@ function showPlayer(link){
   const el=document.createElement(isVid?'video':'iframe');
   el.src=link;
   if(isVid) el.controls=true; else el.allowFullscreen=true;
-  el.style.width='100%'; el.style.aspectRatio='16/9'; el.style.border='1px solid var(--ln)'; el.style.borderRadius='14px'; el.style.background='#000'; el.style.marginBottom='15px';
+  el.style.width='100%'; el.style.aspectRatio='16/9'; el.style.border='1px solid var(--ln)'; el.style.borderRadius='14px'; el.style.background='#000'; el.style.margin='4px 0 6px';
   const p=$('player'); p.innerHTML=''; p.appendChild(el);
-  el.scrollIntoView({block:'center', behavior: 'smooth'});
+  el.scrollIntoView({block:'center', behavior:'smooth'});
 }
 
 init();
