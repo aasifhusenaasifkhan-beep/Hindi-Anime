@@ -82,7 +82,7 @@ textarea.form-control { min-height: 70px; }
     <label>Play Link (Optional)</label><input id="ePl" class="form-control" placeholder="https://...">
     <label>Play Password (Optional)</label><input id="ePw" class="form-control" placeholder="Leave blank if no lock">
     <label>Real Download Link (Google Drive etc.) *</label><input id="eDl" class="form-control" placeholder="https://...">
-    <button class="btn-action" id="btnEp" onclick="addEpisode()">+ Add Episode (Auto Shortener)</button>
+    <button class="btn-action" id="btnEp" onclick="addEpisode()">+ Add Episode</button>
     <div id="eplist" style="margin-top:15px"></div>
   </div>
 
@@ -118,6 +118,7 @@ textarea.form-control { min-height: 70px; }
 
   <div class="p" id="t-push">
     <h2><i class="fa-solid fa-cloud-arrow-up"></i> Save to Database (Live)</h2>
+    <button class="btn-action" id="btnMig" onclick="migratePd()" style="background:#2563eb;margin-bottom:10px">ðŸ” Old Links Secure Karo</button>
     <button class="btn-action" id="btnPush" onclick="pushToDB()">ðŸš€ Push to Cloudflare Database</button>
   </div>
 </div>
@@ -184,6 +185,7 @@ async function loadFromDB(){
   try{
     const c=await fetch('/api/admin',{method:'POST',headers:{'Authorization':pass,'Content-Type':'application/json'},body:JSON.stringify({check:true})});
     if(c.status===401) throw new Error('Password galat');
+    if(c.status===429) throw new Error('Bahut galat try hue, 10 minute baad aao');
     if(!c.ok) throw new Error('Server error '+c.status);
     const r=await fetch(`/api/data?t=${Date.now()}`,{headers:{'Authorization':pass}});
     if(!r.ok) throw new Error("Database Fetch Error");
@@ -197,10 +199,36 @@ async function loadFromDB(){
     $('loginSection').style.display='none';
     $('appBody').style.display='block';
     renderAll();
+    const un=db.posts.reduce((n,p)=>n+p.eps.filter(e=>e.pd&&!e.dl).length,0);
+    if(un) log(un+' purane episodes ke links secure karne baaki hain: "Old Links Secure Karo" dabao, phir Push', false);
   }catch(e){ log('Login Fail: '+e.message,false); }
   
   $('btnLoad').textContent='ðŸ”“ Unlock Panel';
   $('btnLoad').disabled=false;
+}
+
+
+// Purane episodes: public encrypted link (pd) ko decrypt karke server ke private table me bhejne ke liye
+async function decA(b,p){
+  try{
+    const a=Uint8Array.from(atob(b),c=>c.charCodeAt(0)), e=new TextEncoder();
+    const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt:a.slice(0,16),iterations:100000,hash:'SHA-256'},await crypto.subtle.importKey('raw',e.encode(p),'PBKDF2',false,['deriveKey']),{name:'AES-GCM',length:256},false,['decrypt']);
+    return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:a.slice(16,28)},k,a.slice(28)));
+  }catch(e){ return null; }
+}
+async function migratePd(){
+  if(!adminPassCode) return log('Session Expired, Reload Page', false);
+  const todo=[]; db.posts.forEach(p=>p.eps.forEach(e=>{ if(e.pd && !e.dl) todo.push(e); }));
+  if(!todo.length) return log('Sab episodes pehle se secure hain âœ…');
+  $('btnMig').disabled=true;
+  const vk=await getVk(); let ok=0, fail=0;
+  for(let i=0;i<todo.length;i++){
+    $('btnMig').textContent='Securing '+(i+1)+'/'+todo.length+'...';
+    const real=await decA(todo[i].pd, vk);
+    if(real && /^https?:\/\//i.test(real)){ todo[i].dl=real; ok++; } else fail++;
+  }
+  $('btnMig').disabled=false; $('btnMig').textContent='ðŸ” Old Links Secure Karo';
+  log(ok+' episode ready, '+fail+' fail. Ab "Push to Cloudflare Database" dabao.', fail===0);
 }
 
 async function pushToDB(){
@@ -212,7 +240,7 @@ async function pushToDB(){
   $('btnPush').disabled=true; $('btnPush').textContent='Pushing...';
   try{
     // Clean Data Payload (Removed DL Links safety)
-    const pub={posts:db.posts.map(p=>{ const {eps,...rest}=p; return {...rest, eps: eps.map(({dl,...e})=>e)}; }), vip:db.vip, cfg:db.cfg, sh:db.sh};
+    const pub={posts:db.posts, vip:db.vip, cfg:db.cfg, sh:db.sh};
     
     const r=await fetch(`/api/admin`,{
       method:'POST',
@@ -220,6 +248,7 @@ async function pushToDB(){
       body: JSON.stringify(pub)
     });
     if(!r.ok) throw new Error(r.status+': '+(await r.text()).slice(0,200));
+    db.posts.forEach(p=>p.eps.forEach(e=>{ if(e.dl){ delete e.dl; delete e.pd; delete e.short; e.hl=1; } }));
     log(`âœ… Saved to Turso Database Successfully!`);
   }catch(e){ log('Push fail: '+e.message,false); }
   
@@ -249,47 +278,13 @@ function addPost(){
 async function addEpisode(){
   const post=db.posts.find(x=>x.id===$('eP').value); if(!post) return log('Post select karo',false);
   const real=$('eDl').value.trim(); if(!real) return log('Real DL daalo',false);
-  if(!db.sh.length) return log('Shortener add karo pehle',false);
-
-  $('btnEp').textContent = 'Generating Links...';
+  if(!/^https?:\/\//i.test(real)) return log('Link https:// se shuru hona chahiye',false);
+  if(!db.sh.length) log('Dhyan: abhi koi shortener add nahi hai, download page par error aayega',false);
   const epId = Date.now().toString(36);
-
-  let baseUrl = db.cfg.web? db.cfg.web.trim().replace(/\/$/, '') : window.location.origin;
-  const targetUrl = `${baseUrl}/verify.html?id=${post.id}&ep=${epId}&done=1`;
-  const shorts=[]; let lastErr='';
-  
-  for(const s of db.sh){
-    try{
-      const targetApiUrl = `https://${s.d}/api?api=${encodeURIComponent(s.k)}&url=${encodeURIComponent(targetUrl)}`;
-      // CF Proxy bypasses CORS
-      const r = await fetch(`/api/proxy?url=${encodeURIComponent(targetApiUrl)}`, { headers: { 'Authorization': adminPassCode } });
-      const text = await r.text();
-      let l = null;
-
-      // UNIVERSAL PARSER (Har format handle karega)
-      try {
-          const j = JSON.parse(text);
-          l = j.shortenedUrl || j.short_url || j.shortUrl || j.url || (j.data && (j.data.url || j.data.short_url));
-      } catch(e) {}
-      
-      // Agar JSON format alag hua toh directly Text se link nikal lega
-      if(!l){
-          const m = text.match(/https?:\/\/[^\s"'\\]+/);
-          if(m) l = m[0];
-      }
-      if(l) shorts.push(l); else lastErr = s.d+': '+text.slice(0,200);
-    }catch(e){ console.log("Shortener Error:", e); }
-  }
-
-  if(!shorts.length) { $('btnEp').textContent = '+ Add Episode'; return log('Shortener fail ho gaya -> '+lastErr,false); }
-
-  const vk=await getVk();
-  const pd=await enc(real, vk);
   let play=$('ePl').value.trim(), lock=0; if(play && $('ePw').value.trim()){ play=await enc(play, $('ePw').value.trim()); lock=1; }
-
-  post.eps.push({id:epId, s:$('eS').value.trim()||'01', n:$('eN').value.trim(), q:$('eQl').value, play, lock, pd, short:shorts});
-  $('eN').value=$('eDl').value=''; $('btnEp').textContent = '+ Add Episode';
-  log('Episode Added Successfully!');
+  post.eps.push({id:epId, s:$('eS').value.trim()||'01', n:$('eN').value.trim(), q:$('eQl').value, play, lock, dl:real});
+  $('eN').value=$('eDl').value=''; $('ePl').value=$('ePw').value='';
+  renderAll(); log('Episode add ho gaya. Push dabana mat bhoolna!');
 }
 
 async function addVip(){ const email=$('vE').value.trim().toLowerCase(), pass=$('vP').value.trim(); if(!email||!pass) return; const vk=await getVk(); const k=await enc(vk, pass); const h=await H(pass); db.vip.push({email,h,k,exp:Date.now()+parseInt($('vD').value)*86400000}); log('VIP added'); $('vE').value=$('vP').value=''; }
