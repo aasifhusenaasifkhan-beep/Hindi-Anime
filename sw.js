@@ -1,9 +1,9 @@
-const CACHE='hsa-v1';
+const CACHE='hsa-v2';
 const CORE=['/', '/index.html', '/post.html', '/verify.html', '/vip.html', '/assets/css/style.css', '/assets/js/app.js'];
 self.addEventListener('install', e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
 });
-self.addEventListener('activate', e=>{ e.waitUntil(self.clients.claim()); });
+self.addEventListener('activate', e=>{ e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())); });
 self.addEventListener('fetch', e=>{
   if(e.request.method!=='GET' || e.request.url.includes('/api/')) return;
   e.respondWith(
