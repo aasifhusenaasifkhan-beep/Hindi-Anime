@@ -35,19 +35,20 @@ textarea.form-control { min-height: 70px; }
 <div id="loginSection" style="background:var(--card); border:1px solid var(--ln); border-radius:12px; padding:25px 20px; text-align:center;">
   <p style="color:var(--mu); font-size:12px; margin-bottom:20px;">Secure Database Login</p>
   <input id="adminPass" type="password" class="form-control" placeholder="Enter Admin Password..." style="text-align:center; font-weight:bold; letter-spacing:1px; margin-bottom:15px;">
-  <button class="btn-action" id="btnLoad" onclick="loadFromDB()">ðŸ”“ Unlock Panel</button>
+  <button class="btn-action" id="btnLoad" onclick="loadFromDB()">🔓 Unlock Panel</button>
 </div>
 
 <div id="appBody">
   <div class="tabs">
     <button data-t="post" class="ep-btn on" onclick="tab('post')">Add Post</button>
     <button data-t="ep" class="ep-btn" onclick="tab('ep')">Episodes</button>
+    <button data-t="img" class="ep-btn" onclick="tab('img')">Images</button>
     <button data-t="del" class="ep-btn" onclick="tab('del')">Delete</button>
     <button data-t="sh" class="ep-btn" onclick="tab('sh')">Shorteners</button>
     <button data-t="vip" class="ep-btn" onclick="tab('vip')">VIP</button>
     <button data-t="ads" class="ep-btn" onclick="tab('ads')">Ads & App</button>
     <button data-t="set" class="ep-btn" onclick="tab('set')">Settings</button>
-    <button data-t="push" class="ep-btn" onclick="tab('push')" style="background:#00b359; color:#fff;">ðŸš€ Push Live</button>
+    <button data-t="push" class="ep-btn" onclick="tab('push')" style="background:#00b359; color:#fff;">🚀 Push Live</button>
   </div>
 
   <div class="p on" id="t-post">
@@ -57,7 +58,7 @@ textarea.form-control { min-height: 70px; }
       <textarea id="autoDetectInp" class="form-control" style="height:60px; font-size:11px;" placeholder="Paste text here..." oninput="handleAutoDetect()"></textarea>
     </div>
     <label>Poster Image URL</label>
-    <p style="font-size:10px; color:var(--ac); margin:0 0 5px;">âœ… Telegram Link ab directly Support karega (t.me/...)</p>
+    <p style="font-size:10px; color:var(--ac); margin:0 0 5px;">✅ Telegram Link ab directly Support karega (t.me/...)</p>
     <input id="pImg" class="form-control" placeholder="https://..." oninput="document.getElementById('pImgPrev').src=cdnImg(this.value)">
     <img id="pImgPrev" src="https://placehold.co/600x338/0d121c/00ff66?text=Preview" style="width:100%; margin-top:8px; border-radius:8px; border:1px solid var(--ln); aspect-ratio:16/9; object-fit:cover;">
     <label>Anime Name *</label><input id="pName" class="form-control" placeholder="Solo Leveling Hindi Sub">
@@ -84,6 +85,12 @@ textarea.form-control { min-height: 70px; }
     <label>Real Download Link (Google Drive etc.) *</label><input id="eDl" class="form-control" placeholder="https://...">
     <button class="btn-action" id="btnEp" onclick="addEpisode()">+ Add Episode</button>
     <div id="eplist" style="margin-top:15px"></div>
+  </div>
+
+  <div class="p" id="t-img">
+    <h2><i class="fa-solid fa-image"></i> Post Images</h2>
+    <p style="font-size:12px;color:var(--mu);margin-bottom:12px">Telegram / telegra.ph wali images Cloudflare ka roz ka quota khaati hain. ⚠️ wali posts ki image ka direct link (jaise postimages / imgbb wala) daalo, <b>Update</b> dabao, phir Push Live karo.</p>
+    <div id="imglist"></div>
   </div>
 
   <div class="p" id="t-del"><h2><i class="fa-solid fa-trash"></i> Delete Posts</h2><div id="dlist"></div></div>
@@ -118,8 +125,8 @@ textarea.form-control { min-height: 70px; }
 
   <div class="p" id="t-push">
     <h2><i class="fa-solid fa-cloud-arrow-up"></i> Save to Database (Live)</h2>
-    <button class="btn-action" id="btnMig" onclick="migratePd()" style="background:#2563eb;margin-bottom:10px">ðŸ” Old Links Secure Karo</button>
-    <button class="btn-action" id="btnPush" onclick="pushToDB()">ðŸš€ Push to Cloudflare Database</button>
+    <button class="btn-action" id="btnMig" onclick="migratePd()" style="background:#2563eb;margin-bottom:10px">🔐 Old Links Secure Karo</button>
+    <button class="btn-action" id="btnPush" onclick="pushToDB()">🚀 Push to Cloudflare Database</button>
   </div>
 </div>
 
@@ -203,7 +210,7 @@ async function loadFromDB(){
     if(un) log(un+' purane episodes ke links secure karne baaki hain: "Old Links Secure Karo" dabao, phir Push', false);
   }catch(e){ log('Login Fail: '+e.message,false); }
   
-  $('btnLoad').textContent='ðŸ”“ Unlock Panel';
+  $('btnLoad').textContent='🔓 Unlock Panel';
   $('btnLoad').disabled=false;
 }
 
@@ -219,7 +226,7 @@ async function decA(b,p){
 async function migratePd(){
   if(!adminPassCode) return log('Session Expired, Reload Page', false);
   const todo=[]; db.posts.forEach(p=>p.eps.forEach(e=>{ if(e.pd && !e.dl) todo.push(e); }));
-  if(!todo.length) return log('Sab episodes pehle se secure hain âœ…');
+  if(!todo.length) return log('Sab episodes pehle se secure hain ✅');
   $('btnMig').disabled=true;
   const vk=await getVk(); let ok=0, fail=0;
   for(let i=0;i<todo.length;i++){
@@ -227,7 +234,7 @@ async function migratePd(){
     const real=await decA(todo[i].pd, vk);
     if(real && /^https?:\/\//i.test(real)){ todo[i].dl=real; ok++; } else fail++;
   }
-  $('btnMig').disabled=false; $('btnMig').textContent='ðŸ” Old Links Secure Karo';
+  $('btnMig').disabled=false; $('btnMig').textContent='🔐 Old Links Secure Karo';
   log(ok+' episode ready, '+fail+' fail. Ab "Push to Cloudflare Database" dabao.', fail===0);
 }
 
@@ -249,14 +256,24 @@ async function pushToDB(){
     });
     if(!r.ok) throw new Error(r.status+': '+(await r.text()).slice(0,200));
     db.posts.forEach(p=>p.eps.forEach(e=>{ if(e.dl){ delete e.dl; delete e.pd; delete e.short; e.hl=1; } }));
-    log(`âœ… Saved to Turso Database Successfully!`);
+    log(`✅ Saved to Turso Database Successfully!`);
   }catch(e){ log('Push fail: '+e.message,false); }
   
-  $('btnPush').disabled=false; $('btnPush').textContent='ðŸš€ Push to Cloudflare Database';
+  $('btnPush').disabled=false; $('btnPush').textContent='🚀 Push to Cloudflare Database';
 }
 
 function renderAll(){
   $('plist').innerHTML=db.posts.map(p=>`<div class="row"><div><b style="color:var(--ac);">${esc(p.name)}</b><br><small style="color:var(--mu)">${p.eps.length} eps</small></div></div>`).join('');
+  $('imglist').innerHTML=db.posts.map((p,i)=>{
+    const tg=/t\.me|telegra\.ph/i.test(p.img||'');
+    return `<div style="border:1px solid var(--ln);border-radius:10px;padding:10px;margin-bottom:10px">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+        <img loading="lazy" src="${esc(cdnImg(p.img))}" style="width:72px;aspect-ratio:16/9;object-fit:cover;border-radius:6px;border:1px solid var(--ln)">
+        <div style="flex:1;min-width:0"><b>${esc(p.name)}</b><br><small style="color:${tg?'#fb923c':'#00ff66'}">${tg?'⚠️ Telegram image (quota use hota hai)':'✅ Direct image'}</small></div>
+      </div>
+      <div style="display:flex;gap:6px"><input class="form-control" id="im${i}" value="${esc(p.img||'')}" placeholder="https://..."><button class="ep-btn" onclick="setImg(${i})">Update</button></div>
+    </div>`;
+  }).join('');
   renderEpSel();
   $('dlist').innerHTML=db.posts.map((p,i)=>`<div class="row"><div>${esc(p.name)}</div><button class="danger" onclick="delPost(${i})">Delete</button></div>`).join('');
   $('slist').innerHTML=db.sh.map((s,i)=>`<div class="row"><div>${esc(s.d)}</div><button class="danger" onclick="db.sh.splice(${i},1);renderAll()">Del</button></div>`).join('');
@@ -264,6 +281,7 @@ function renderAll(){
 function renderEpSel(){ const cur=$('eP').value; const q=$('eSearch').value.toLowerCase(); const filtered=db.posts.filter(p=>p.name.toLowerCase().includes(q)); $('eP').innerHTML=filtered.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join(''); if(cur && filtered.some(p=>p.id===cur)) $('eP').value=cur; renderEpList(); }
 function renderEpList(){ const pi=db.posts.findIndex(x=>x.id===$('eP').value); const p=db.posts[pi]; $('eplist').innerHTML = p ? (p.eps.length ? '<label>Is post ke episodes:</label>' : '')+p.eps.map((e,i)=>`<div class="row"><div>S${esc(e.s)} E${esc(e.n)} <small style="color:var(--mu)">${esc(e.q||'')}</small></div><button class="danger" onclick="delEp(${pi},${i})">Delete</button></div>`).join('') : ''; }
 function delEp(pi,i){ const p=db.posts[pi]; if(p && confirm('Episode delete karna hai?')){ p.eps.splice(i,1); renderAll(); log('Episode deleted (Push karna mat bhoolna)'); } }
+function setImg(i){ const v=$('im'+i).value.trim(); if(!v||!/^https?:\/\//i.test(v)) return log('Image link https:// se shuru hona chahiye',false); db.posts[i].img=v; renderAll(); log('Image update ho gayi. Push Live karna mat bhoolna'); }
 function delPost(i){ if(confirm('Delete?')){ db.posts.splice(i,1); renderAll(); log('Deleted'); } }
 function addSh(){ const d=$('sD').value.trim().replace(/^https?:\/\//,'').replace(/\/.*/,''); const k=$('sK').value.trim(); if(!d||!k) return; db.sh.push({d,k}); $('sD').value=$('sK').value=''; renderAll(); log('Added'); }
 function addPost(){
